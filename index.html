@@ -259,9 +259,7 @@
     .panel,
     .metric,
     .session-item,
-    .topic-item,
-    .note-group,
-    .note-card {
+    .topic-item {
       border: 1px solid var(--line);
       border-radius: var(--radius);
       background: var(--surface);
@@ -753,72 +751,6 @@
       gap: 12px;
     }
 
-    .notes-layout {
-      grid-template-columns: 430px minmax(0, 1fr);
-      align-items: start;
-    }
-
-    .note-group {
-      padding: 14px;
-      box-shadow: 0 10px 22px rgba(45, 39, 28, 0.07);
-    }
-
-    .note-group + .note-group {
-      margin-top: 12px;
-    }
-
-    .note-group-title {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      font-size: 1.04rem;
-      font-weight: 900;
-      margin-bottom: 12px;
-    }
-
-    .note-subtopic {
-      margin: 12px 0 8px;
-      color: var(--ink);
-      font-weight: 850;
-    }
-
-    .note-section {
-      margin: 10px 0 8px;
-      color: var(--muted);
-      font-size: 0.86rem;
-      font-weight: 800;
-      text-transform: uppercase;
-    }
-
-    .note-card {
-      padding: 12px;
-      box-shadow: none;
-    }
-
-    .note-card + .note-card {
-      margin-top: 8px;
-    }
-
-    .note-card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 8px;
-    }
-
-    .note-date {
-      color: var(--muted);
-      font-size: 0.8rem;
-      font-weight: 750;
-    }
-
-    .note-content {
-      white-space: pre-wrap;
-      color: var(--ink);
-      font-size: 0.94rem;
-    }
-
     .progress-row {
       display: grid;
       gap: 7px;
@@ -872,6 +804,18 @@
       white-space: nowrap;
     }
 
+    body.dark .sync-pill {
+      border-color: #465158;
+      color: #eef2f2;
+      background: #252c30;
+    }
+
+    body.dark .sync-pill.error {
+      border-color: rgba(215, 99, 77, 0.55);
+      color: #ffd3ca;
+      background: rgba(215, 99, 77, 0.15);
+    }
+
     .theme-toggle {
       width: 42px;
       min-height: 42px;
@@ -900,8 +844,7 @@
     @media (max-width: 940px) {
       .auth-layout,
       .workspace-grid,
-      .stats-grid,
-      .notes-layout {
+      .stats-grid {
         grid-template-columns: 1fr;
       }
 
@@ -1048,7 +991,6 @@
         <button class="tab-button active" type="button" data-tab="dashboard"><i data-lucide="layout-dashboard" size="17"></i>Dashboard</button>
         <button class="tab-button" type="button" data-tab="timer"><i data-lucide="timer" size="17"></i>Timer</button>
         <button class="tab-button" type="button" data-tab="log"><i data-lucide="notebook-pen" size="17"></i>Log</button>
-        <button class="tab-button" type="button" data-tab="notes"><i data-lucide="sticky-note" size="17"></i>Notes</button>
         <button class="tab-button" type="button" data-tab="topics"><i data-lucide="tags" size="17"></i>Topics</button>
         <button class="tab-button" type="button" data-tab="stats"><i data-lucide="chart-no-axes-column-increasing" size="17"></i>Stats</button>
       </nav>
@@ -1160,48 +1102,6 @@
         </section>
       </section>
 
-      <section id="notes-tab" class="tab-panel hidden">
-        <div class="grid notes-layout">
-          <section class="panel">
-            <div class="panel-header">
-              <div>
-                <h2>Add Note</h2>
-                <div class="panel-kicker">Subject, subtopic, and section notes</div>
-              </div>
-            </div>
-            <form id="note-form" class="form-grid">
-              <div class="form-row">
-                <label for="notes-topic">Subject</label>
-                <select id="notes-topic"></select>
-              </div>
-              <div class="form-row">
-                <label for="note-subtopic">Subtopic name</label>
-                <input id="note-subtopic" type="text" required maxlength="80" placeholder="Trigonometry formulas" />
-              </div>
-              <div class="form-row">
-                <label for="note-section">Section</label>
-                <input id="note-section" type="text" required maxlength="80" placeholder="Examples, Theory, Mistakes..." />
-              </div>
-              <div class="form-row">
-                <label for="note-content">Notes</label>
-                <textarea id="note-content" required placeholder="Write your notes here"></textarea>
-              </div>
-              <button class="button blue" type="submit"><i data-lucide="save" size="18"></i>Save note</button>
-            </form>
-          </section>
-
-          <section class="panel">
-            <div class="panel-header">
-              <div>
-                <h2>Study Notes</h2>
-                <div class="panel-kicker">Grouped by subject, subtopic, and section</div>
-              </div>
-            </div>
-            <div id="notes-list"></div>
-          </section>
-        </div>
-      </section>
-
       <section id="topics-tab" class="tab-panel hidden">
         <div class="grid workspace-grid">
           <section class="panel">
@@ -1297,7 +1197,6 @@
       user: null,
       topics: [],
       sessions: [],
-      notes: [],
       activeTab: "dashboard",
       syncing: false,
       timer: {
@@ -1332,9 +1231,9 @@
         "auth-screen", "app-screen", "auth-title", "show-login", "show-signup", "auth-form",
         "email", "password", "auth-submit", "email-resend-panel", "resend-email-button", "auth-message", "user-email", "logout-button",
         "sync-status", "metrics", "weekly-chart", "monthly-chart", "recent-sessions",
-        "stats-metrics", "stats-weekly-chart", "all-sessions", "topic-breakdown", "timer-topic", "timer-topic-label", "manual-topic", "notes-topic",
+        "stats-metrics", "stats-weekly-chart", "all-sessions", "topic-breakdown", "timer-topic", "timer-topic-label", "manual-topic",
         "manual-log-form", "manual-minutes", "manual-date", "manual-notes", "topic-form",
-        "topic-name", "topic-color", "topic-goal", "topics-list", "note-form", "note-subtopic", "note-section", "note-content", "notes-list", "mode-stopwatch",
+        "topic-name", "topic-color", "topic-goal", "topics-list", "mode-stopwatch",
         "mode-countdown", "countdown-minutes", "time-display", "timer-start", "timer-reset",
         "timer-save", "theme-toggle", "go-quick-log"
       ].forEach(id => {
@@ -1357,7 +1256,6 @@
 
       els.topicForm.addEventListener("submit", addTopic);
       els.manualLogForm.addEventListener("submit", addManualSession);
-      els.noteForm.addEventListener("submit", addStudyNote);
       els.themeToggle.addEventListener("click", toggleTheme);
       els.goQuickLog.addEventListener("click", () => setActiveTab("timer"));
       els.modeStopwatch.addEventListener("click", () => setTimerMode("stopwatch"));
@@ -1385,7 +1283,6 @@
           state.user = null;
           state.topics = [];
           state.sessions = [];
-          state.notes = [];
           showAuth();
         }
       });
@@ -1576,7 +1473,6 @@
       state.user = null;
       state.topics = [];
       state.sessions = [];
-      state.notes = [];
       showAuth();
     }
 
@@ -1586,7 +1482,6 @@
       try {
         const cachedTopics = [...state.topics];
         const cachedSessions = [...state.sessions];
-        const cachedNotes = [...state.notes];
         const [topicsResult, sessionsResult] = await Promise.all([
           client.from("study_topics").select("*").order("created_at", { ascending: true }),
           client.from("study_sessions").select("*").order("started_at", { ascending: false })
@@ -1597,17 +1492,8 @@
 
         const remoteTopics = topicsResult.data || [];
         const remoteSessions = sessionsResult.data || [];
-        let remoteNotes = [];
-        let notesAvailable = true;
-        const notesResult = await client.from("study_notes").select("*").order("updated_at", { ascending: false });
-        if (notesResult.error) {
-          notesAvailable = false;
-        } else {
-          remoteNotes = notesResult.data || [];
-        }
         const remoteTopicIds = new Set(remoteTopics.map(topic => topic.id));
         const remoteSessionIds = new Set(remoteSessions.map(session => session.id));
-        const remoteNoteIds = new Set(remoteNotes.map(note => note.id));
 
         state.topics = mergeById(remoteTopics, cachedTopics)
           .filter(topic => topic.user_id === state.user.id)
@@ -1615,16 +1501,12 @@
         state.sessions = mergeById(remoteSessions, cachedSessions)
           .filter(session => session.user_id === state.user.id)
           .sort((a, b) => new Date(b.started_at) - new Date(a.started_at));
-        state.notes = mergeById(remoteNotes, cachedNotes)
-          .filter(note => note.user_id === state.user.id)
-          .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
 
         if (state.topics.length === 0) {
           await createStarterTopics();
         } else {
           const missingTopics = state.topics.filter(topic => !remoteTopicIds.has(topic.id));
           const missingSessions = state.sessions.filter(session => !remoteSessionIds.has(session.id));
-          const missingNotes = state.notes.filter(note => !remoteNoteIds.has(note.id));
           if (missingTopics.length) {
             const { error } = await client.from("study_topics").upsert(missingTopics, { onConflict: "id" });
             if (error) throw error;
@@ -1633,14 +1515,10 @@
             const { error } = await client.from("study_sessions").upsert(missingSessions, { onConflict: "id" });
             if (error) throw error;
           }
-          if (notesAvailable && missingNotes.length) {
-            const { error } = await client.from("study_notes").upsert(missingNotes, { onConflict: "id" });
-            if (error) throw error;
-          }
         }
 
         saveCache();
-        setSyncStatus(notesAvailable ? "Synced" : "Notes local", notesAvailable ? "ready" : "error");
+        setSyncStatus("Synced", "ready");
       } catch (error) {
         setSyncStatus("Local backup", "error");
         console.error(error);
@@ -1720,7 +1598,6 @@
 
       state.topics = state.topics.filter(item => item.id !== topicId);
       state.sessions = state.sessions.map(session => session.topic_id === topicId ? { ...session, topic_id: null } : session);
-      state.notes = state.notes.map(note => note.topic_id === topicId ? { ...note, topic_id: null } : note);
       saveCache();
       renderAll();
 
@@ -1730,55 +1607,6 @@
         setSyncStatus("Synced", "ready");
       } catch (error) {
         setSyncStatus("Local backup", "error");
-      }
-    }
-
-    async function addStudyNote(event) {
-      event.preventDefault();
-      const topic = getTopicById(els.notesTopic.value);
-      const subtopic = els.noteSubtopic.value.trim();
-      const sectionName = els.noteSection.value.trim();
-      const content = els.noteContent.value.trim();
-      if (!topic || !subtopic || !sectionName || !content || !state.user) return;
-
-      const now = new Date().toISOString();
-      const row = {
-        id: crypto.randomUUID(),
-        user_id: state.user.id,
-        topic_id: topic.id,
-        topic_name: topic.name,
-        subtopic_name: subtopic,
-        section_name: sectionName,
-        content,
-        created_at: now,
-        updated_at: now
-      };
-
-      state.notes.unshift(row);
-      saveCache();
-      renderAll();
-      els.noteForm.reset();
-
-      try {
-        const { error } = await client.from("study_notes").upsert(row, { onConflict: "id" });
-        if (error) throw error;
-        setSyncStatus("Synced", "ready");
-      } catch (error) {
-        setSyncStatus("Notes local", "error");
-      }
-    }
-
-    async function deleteStudyNote(noteId) {
-      state.notes = state.notes.filter(note => note.id !== noteId);
-      saveCache();
-      renderAll();
-
-      try {
-        const { error } = await client.from("study_notes").delete().eq("id", noteId);
-        if (error) throw error;
-        setSyncStatus("Synced", "ready");
-      } catch (error) {
-        setSyncStatus("Notes local", "error");
       }
     }
 
@@ -1952,7 +1780,6 @@
       renderTopicBreakdown();
       renderSessions();
       renderTopics();
-      renderStudyNotes();
       refreshIcons();
     }
 
@@ -2013,7 +1840,7 @@
     function renderTopicSelects() {
       const options = state.topics.map(topic => `<option value="${topic.id}">${escapeHtml(topic.name)}</option>`).join("");
       const empty = '<option value="">Add a topic first</option>';
-      [els.timerTopic, els.manualTopic, els.notesTopic].forEach(select => {
+      [els.timerTopic, els.manualTopic].forEach(select => {
         const oldValue = select.value;
         select.innerHTML = options || empty;
         if (oldValue && state.topics.some(topic => topic.id === oldValue)) select.value = oldValue;
@@ -2143,61 +1970,6 @@
       }).join("");
     }
 
-    function renderStudyNotes() {
-      if (state.notes.length === 0) {
-        els.notesList.innerHTML = emptyState("No notes yet. Add your first subtopic note on the left.");
-        return;
-      }
-
-      const groups = new Map();
-      [...state.notes]
-        .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
-        .forEach(note => {
-          const topic = getTopicById(note.topic_id);
-          const topicName = note.topic_name || topic?.name || "General";
-          const topicColor = topic?.color || "#687073";
-          const subtopicName = note.subtopic_name || "Untitled subtopic";
-          const sectionName = note.section_name || "General";
-
-          if (!groups.has(topicName)) {
-            groups.set(topicName, { topicName, topicColor, subtopics: new Map() });
-          }
-          const topicGroup = groups.get(topicName);
-          if (!topicGroup.subtopics.has(subtopicName)) {
-            topicGroup.subtopics.set(subtopicName, new Map());
-          }
-          const sectionGroup = topicGroup.subtopics.get(subtopicName);
-          if (!sectionGroup.has(sectionName)) {
-            sectionGroup.set(sectionName, []);
-          }
-          sectionGroup.get(sectionName).push(note);
-        });
-
-      els.notesList.innerHTML = Array.from(groups.values()).map(group => `
-        <article class="note-group">
-          <div class="note-group-title">
-            <span class="topic-dot" style="background:${escapeAttr(group.topicColor)}"></span>
-            <span>${escapeHtml(group.topicName)}</span>
-          </div>
-          ${Array.from(group.subtopics.entries()).map(([subtopicName, sections]) => `
-            <div class="note-subtopic">${escapeHtml(subtopicName)}</div>
-            ${Array.from(sections.entries()).map(([sectionName, notes]) => `
-              <div class="note-section">${escapeHtml(sectionName)}</div>
-              ${notes.map(note => `
-                <div class="note-card">
-                  <div class="note-card-header">
-                    <span class="note-date">${formatDateTime(note.updated_at || note.created_at)}</span>
-                    <button class="button ghost icon-only" title="Delete note" type="button" onclick="deleteStudyNote('${note.id}')"><i data-lucide="trash-2" size="18"></i></button>
-                  </div>
-                  <div class="note-content">${escapeHtml(note.content)}</div>
-                </div>
-              `).join("")}
-            `).join("")}
-          `).join("")}
-        </article>
-      `).join("");
-    }
-
     function sessionsSince(date) {
       return state.sessions.filter(session => new Date(session.started_at) >= date);
     }
@@ -2272,7 +2044,6 @@
       localStorage.setItem(cacheKey(), JSON.stringify({
         topics: state.topics,
         sessions: state.sessions,
-        notes: state.notes,
         savedAt: new Date().toISOString()
       }));
     }
@@ -2283,11 +2054,9 @@
         const cached = JSON.parse(localStorage.getItem(cacheKey()) || "{}");
         state.topics = Array.isArray(cached.topics) ? cached.topics : [];
         state.sessions = Array.isArray(cached.sessions) ? cached.sessions : [];
-        state.notes = Array.isArray(cached.notes) ? cached.notes : [];
       } catch (_error) {
         state.topics = [];
         state.sessions = [];
-        state.notes = [];
       }
     }
 
@@ -2427,7 +2196,6 @@
 
     window.deleteSession = deleteSession;
     window.deleteTopic = deleteTopic;
-    window.deleteStudyNote = deleteStudyNote;
   </script>
 </body>
 </html>
