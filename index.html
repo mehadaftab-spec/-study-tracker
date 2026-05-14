@@ -733,6 +733,7 @@
       border-radius: 6px 6px 2px 2px;
       background: linear-gradient(180deg, var(--blue), var(--green));
       transition: height 180ms ease;
+      cursor: pointer;
     }
 
     .bar-value,
@@ -744,6 +745,21 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    .bar-value {
+      min-height: 18px;
+      color: var(--ink);
+      font-weight: 850;
+    }
+
+    .chart-detail {
+      min-height: 22px;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.86rem;
+      font-weight: 750;
+      text-align: center;
     }
 
     .topic-breakdown {
@@ -1006,6 +1022,7 @@
               </div>
             </div>
             <div id="weekly-chart" class="bar-chart"></div>
+            <div id="weekly-chart-detail" class="chart-detail"></div>
           </section>
           <section class="panel">
             <div class="panel-header">
@@ -1152,6 +1169,7 @@
               </div>
             </div>
             <div id="stats-weekly-chart" class="bar-chart"></div>
+            <div id="stats-weekly-chart-detail" class="chart-detail"></div>
           </section>
           <section class="panel">
             <div class="panel-header">
@@ -1161,6 +1179,7 @@
               </div>
             </div>
             <div id="monthly-chart" class="bar-chart"></div>
+            <div id="monthly-chart-detail" class="chart-detail"></div>
           </section>
           <section class="panel">
             <div class="panel-header">
@@ -1230,8 +1249,8 @@
       [
         "auth-screen", "app-screen", "auth-title", "show-login", "show-signup", "auth-form",
         "email", "password", "auth-submit", "email-resend-panel", "resend-email-button", "auth-message", "user-email", "logout-button",
-        "sync-status", "metrics", "weekly-chart", "monthly-chart", "recent-sessions",
-        "stats-metrics", "stats-weekly-chart", "all-sessions", "topic-breakdown", "timer-topic", "timer-topic-label", "manual-topic",
+        "sync-status", "metrics", "weekly-chart", "weekly-chart-detail", "monthly-chart", "monthly-chart-detail", "recent-sessions",
+        "stats-metrics", "stats-weekly-chart", "stats-weekly-chart-detail", "all-sessions", "topic-breakdown", "timer-topic", "timer-topic-label", "manual-topic",
         "manual-log-form", "manual-minutes", "manual-date", "manual-notes", "topic-form",
         "topic-name", "topic-color", "topic-goal", "topics-list", "mode-stopwatch",
         "mode-countdown", "countdown-minutes", "time-display", "timer-start", "timer-reset",
@@ -1862,18 +1881,18 @@
     }
 
     function renderWeeklyChart() {
-      renderBarChart(els.weeklyChart, getLastDays(7), "short");
+      renderBarChart(els.weeklyChart, els.weeklyChartDetail, getLastDays(7), "short");
     }
 
     function renderStatsWeeklyChart() {
-      renderBarChart(els.statsWeeklyChart, getCurrentWeekDays(), "short");
+      renderBarChart(els.statsWeeklyChart, els.statsWeeklyChartDetail, getCurrentWeekDays(), "short");
     }
 
     function renderMonthlyChart() {
-      renderBarChart(els.monthlyChart, getLastDays(30), "tiny");
+      renderBarChart(els.monthlyChart, els.monthlyChartDetail, getLastDays(30), "tiny");
     }
 
-    function renderBarChart(container, days, density) {
+    function renderBarChart(container, detailElement, days, density) {
       const values = days.map(day => sumMinutes(sessionsOnDate(day)));
       const max = Math.max(30, ...values);
       container.style.gridTemplateColumns = `repeat(${days.length}, 1fr)`;
@@ -1881,14 +1900,29 @@
         const value = values[index];
         const height = Math.max(3, Math.round((value / max) * 100));
         const label = density === "tiny" && index % 5 !== 0 ? "" : dayLabel(day, density);
+        const detail = chartDetailText(day, value);
         return `
-          <div class="bar-wrap" title="${day.toLocaleDateString()} - ${formatMinutes(value)}">
-            <div class="bar-value">${value ? Math.round(value) : ""}</div>
+          <div class="bar-wrap" title="${escapeAttr(detail)}">
+            <div class="bar-value">${value ? escapeHtml(formatMinutes(value)) : ""}</div>
             <div class="bar" style="height: ${height}%;"></div>
             <div class="bar-label">${escapeHtml(label)}</div>
           </div>
         `;
       }).join("");
+      const bars = Array.from(container.querySelectorAll(".bar-wrap"));
+      bars.forEach((bar, index) => {
+        bar.addEventListener("click", () => {
+          detailElement.textContent = chartDetailText(days[index], values[index]);
+        });
+      });
+      const total = sumMinutes(values);
+      detailElement.textContent = total
+        ? `Tap a bar to see exact time. Total shown: ${formatMinutes(total)}.`
+        : "No study time logged for this chart yet.";
+    }
+
+    function chartDetailText(day, minutes) {
+      return `${day.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}: ${formatMinutes(minutes)} studied`;
     }
 
     function renderTopicBreakdown() {
