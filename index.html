@@ -1428,7 +1428,7 @@
         });
         if (error) throw error;
         rememberPendingVerificationEmail(email);
-        showMessage(els.authMessage, "Verification email sent again. Check inbox and spam.");
+        showMessage(els.authMessage, "Verification email sent again. Check your Inbox, Spam, or Junk folder.");
         sent = true;
       } catch (error) {
         showMessage(els.authMessage, friendlyError(error), true);
@@ -1464,7 +1464,7 @@
             rememberPendingVerificationEmail(email);
             setAuthMode("login");
             startEmailResendCooldown(60);
-            showMessage(els.authMessage, "Account created. Check your email, click the verification link, then return here.");
+            showMessage(els.authMessage, "Account created. Check your Inbox, Spam, or Junk folder, click the verification link, then return here.");
           }
         } else {
           const { data, error } = await client.auth.signInWithPassword({ email, password });
@@ -2243,7 +2243,7 @@
     function friendlyError(error) {
       const message = error?.message || "Something went wrong.";
       if (message.toLowerCase().includes("invalid login")) return "Email or password is incorrect.";
-      if (message.toLowerCase().includes("email not confirmed")) return "Verify your email first. If it did not arrive, resend after 1 minute.";
+      if (message.toLowerCase().includes("email not confirmed")) return "Verify your email first. Check Inbox, Spam, or Junk. If it did not arrive, resend after 1 minute.";
       if (message.toLowerCase().includes("rate limit") || message.toLowerCase().includes("security purposes")) return "Too many requests. Wait a minute, then try again.";
       if (message.toLowerCase().includes("failed to fetch")) return "Could not reach Supabase. Check internet and setup.";
       if (message.toLowerCase().includes("database")) return "Supabase database setup is missing. Paste the SQL setup first.";
