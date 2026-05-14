@@ -23,6 +23,16 @@
       --radius: 8px;
     }
 
+    body.dark {
+      --bg: #111416;
+      --surface: #181d20;
+      --surface-strong: #20262a;
+      --ink: #eef2f2;
+      --muted: #a8b0b3;
+      --line: #343d42;
+      --shadow: 0 18px 46px rgba(0, 0, 0, 0.34);
+    }
+
     * {
       box-sizing: border-box;
     }
@@ -39,6 +49,14 @@
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-size: 16px;
       line-height: 1.45;
+    }
+
+    body.dark {
+      background:
+        linear-gradient(180deg, rgba(17, 20, 22, 0.94), rgba(17, 20, 22, 0.98)),
+        radial-gradient(circle at top left, rgba(40, 104, 216, 0.16), transparent 34rem),
+        radial-gradient(circle at 85% 18%, rgba(22, 132, 93, 0.14), transparent 28rem),
+        var(--bg);
     }
 
     button,
@@ -313,6 +331,14 @@
       outline: none;
     }
 
+    body.dark input,
+    body.dark select,
+    body.dark textarea {
+      border-color: #465158;
+      background: #111416;
+      color: var(--ink);
+    }
+
     textarea {
       resize: vertical;
       min-height: 84px;
@@ -350,6 +376,15 @@
       background: #fff;
       color: var(--ink);
       border: 1px solid #cfc7ba;
+    }
+
+    body.dark .button.secondary,
+    body.dark .tab-button.active,
+    body.dark .auth-switch button.active,
+    body.dark .mode-button.active {
+      background: #252c30;
+      border-color: #465158;
+      color: var(--ink);
     }
 
     .button.blue {
@@ -723,6 +758,11 @@
       white-space: nowrap;
     }
 
+    .theme-toggle {
+      width: 42px;
+      min-height: 42px;
+    }
+
     .sync-dot {
       width: 8px;
       height: 8px;
@@ -871,6 +911,9 @@
         </div>
         <div class="topbar-actions">
           <div id="sync-status" class="sync-pill"><span class="sync-dot"></span><span>Loading</span></div>
+          <button id="theme-toggle" class="button secondary icon-only theme-toggle" type="button" title="Toggle dark mode">
+            <i data-lucide="moon" size="18"></i>
+          </button>
           <button id="logout-button" class="button secondary" type="button">
             <i data-lucide="log-out" size="18"></i>
             Logout
@@ -989,6 +1032,7 @@
               <h2>All Sessions</h2>
               <div class="panel-kicker">Saved study history</div>
             </div>
+            <button id="go-quick-log" class="button blue" type="button"><i data-lucide="plus" size="18"></i>New log</button>
           </div>
           <div id="all-sessions" class="list"></div>
         </section>
@@ -1034,7 +1078,17 @@
       </section>
 
       <section id="stats-tab" class="tab-panel hidden">
+        <div id="stats-metrics" class="grid dashboard-grid" style="margin-bottom: 16px;"></div>
         <div class="grid stats-grid">
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Weekly Breakdown</h2>
+                <div class="panel-kicker">Current week by day</div>
+              </div>
+            </div>
+            <div id="stats-weekly-chart" class="bar-chart"></div>
+          </section>
           <section class="panel">
             <div class="panel-header">
               <div>
@@ -1098,6 +1152,7 @@
     function init() {
       cacheElements();
       bindEvents();
+      applySavedTheme();
       setManualDateNow();
       restoreSession();
       setInterval(tickTimer, 500);
@@ -1109,11 +1164,11 @@
         "auth-screen", "app-screen", "auth-title", "show-login", "show-signup", "auth-form",
         "email", "password", "auth-submit", "auth-message", "user-email", "logout-button",
         "sync-status", "metrics", "weekly-chart", "monthly-chart", "recent-sessions",
-        "all-sessions", "topic-breakdown", "timer-topic", "timer-topic-label", "manual-topic",
+        "stats-metrics", "stats-weekly-chart", "all-sessions", "topic-breakdown", "timer-topic", "timer-topic-label", "manual-topic",
         "manual-log-form", "manual-minutes", "manual-date", "manual-notes", "topic-form",
         "topic-name", "topic-color", "topic-goal", "topics-list", "mode-stopwatch",
         "mode-countdown", "countdown-minutes", "time-display", "timer-start", "timer-reset",
-        "timer-save"
+        "timer-save", "theme-toggle", "go-quick-log"
       ].forEach(id => {
         els[toCamel(id)] = document.getElementById(id);
       });
@@ -1133,6 +1188,8 @@
 
       els.topicForm.addEventListener("submit", addTopic);
       els.manualLogForm.addEventListener("submit", addManualSession);
+      els.themeToggle.addEventListener("click", toggleTheme);
+      els.goQuickLog.addEventListener("click", () => setActiveTab("timer"));
       els.modeStopwatch.addEventListener("click", () => setTimerMode("stopwatch"));
       els.modeCountdown.addEventListener("click", () => setTimerMode("countdown"));
       els.countdownMinutes.addEventListener("change", updateCountdownTarget);
@@ -1172,6 +1229,29 @@
       els.authSubmit.innerHTML = authButtonHtml();
       els.password.autocomplete = isLogin ? "current-password" : "new-password";
       hideMessage(els.authMessage);
+      refreshIcons();
+    }
+
+    function applySavedTheme() {
+      const theme = localStorage.getItem("study-tracker-theme") || "light";
+      document.body.classList.toggle("dark", theme === "dark");
+      renderThemeIcon();
+    }
+
+    function toggleTheme() {
+      const isDark = !document.body.classList.contains("dark");
+      document.body.classList.toggle("dark", isDark);
+      localStorage.setItem("study-tracker-theme", isDark ? "dark" : "light");
+      renderThemeIcon();
+    }
+
+    function renderThemeIcon() {
+      if (!els.themeToggle) return;
+      const isDark = document.body.classList.contains("dark");
+      els.themeToggle.innerHTML = isDark
+        ? '<i data-lucide="sun" size="18"></i>'
+        : '<i data-lucide="moon" size="18"></i>';
+      els.themeToggle.title = isDark ? "Switch to light mode" : "Switch to dark mode";
       refreshIcons();
     }
 
@@ -1535,9 +1615,11 @@
 
     function renderAll() {
       renderMetrics();
+      renderStatsMetrics();
       renderTopicSelects();
       renderTimer();
       renderWeeklyChart();
+      renderStatsWeeklyChart();
       renderMonthlyChart();
       renderTopicBreakdown();
       renderSessions();
@@ -1559,6 +1641,33 @@
       ];
 
       els.metrics.innerHTML = metrics.map(metric => `
+        <article class="metric">
+          <div class="metric-top">
+            <span>${escapeHtml(metric.label)}</span>
+            <span class="metric-icon"><i data-lucide="${metric.icon}" size="18"></i></span>
+          </div>
+          <div>
+            <div class="metric-value">${escapeHtml(metric.value)}</div>
+            <div class="metric-note">${escapeHtml(metric.note)}</div>
+          </div>
+        </article>
+      `).join("");
+    }
+
+    function renderStatsMetrics() {
+      const year = sumMinutes(sessionsSince(startOfYear(new Date())));
+      const allTime = sumMinutes(state.sessions);
+      const bestDay = getBestDayMinutes();
+      const averageSession = state.sessions.length ? allTime / state.sessions.length : 0;
+
+      const metrics = [
+        { label: "This year", value: formatMinutes(year), note: `${new Date().getFullYear()} total hours`, icon: "calendar-range" },
+        { label: "All time", value: formatMinutes(allTime), note: `${state.sessions.length} saved sessions`, icon: "database" },
+        { label: "Best day", value: formatMinutes(bestDay), note: "Highest single-day total", icon: "trophy" },
+        { label: "Avg session", value: formatMinutes(averageSession), note: "Average logged session", icon: "activity" }
+      ];
+
+      els.statsMetrics.innerHTML = metrics.map(metric => `
         <article class="metric">
           <div class="metric-top">
             <span>${escapeHtml(metric.label)}</span>
@@ -1598,6 +1707,10 @@
 
     function renderWeeklyChart() {
       renderBarChart(els.weeklyChart, getLastDays(7), "short");
+    }
+
+    function renderStatsWeeklyChart() {
+      renderBarChart(els.statsWeeklyChart, getCurrentWeekDays(), "short");
     }
 
     function renderMonthlyChart() {
@@ -1719,6 +1832,15 @@
       return sessions.reduce((total, session) => total + Number(session.minutes || 0), 0);
     }
 
+    function getBestDayMinutes() {
+      const totals = new Map();
+      state.sessions.forEach(session => {
+        const key = dateKey(new Date(session.started_at));
+        totals.set(key, (totals.get(key) || 0) + Number(session.minutes || 0));
+      });
+      return Math.max(0, ...totals.values());
+    }
+
     function getStreakDays() {
       const studyDays = new Set(state.sessions.map(session => dateKey(new Date(session.started_at))));
       if (studyDays.size === 0) return 0;
@@ -1740,6 +1862,15 @@
       return Array.from({ length: count }, (_item, index) => {
         const date = startOfDay(new Date());
         date.setDate(date.getDate() - (count - 1 - index));
+        return date;
+      });
+    }
+
+    function getCurrentWeekDays() {
+      const start = startOfWeek(new Date());
+      return Array.from({ length: 7 }, (_item, index) => {
+        const date = new Date(start);
+        date.setDate(start.getDate() + index);
         return date;
       });
     }
@@ -1794,6 +1925,12 @@
     function startOfMonth(date) {
       const copy = startOfDay(date);
       copy.setDate(1);
+      return copy;
+    }
+
+    function startOfYear(date) {
+      const copy = startOfDay(date);
+      copy.setMonth(0, 1);
       return copy;
     }
 
