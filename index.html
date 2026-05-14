@@ -729,7 +729,7 @@
 
     .bar {
       width: 100%;
-      min-height: 6px;
+      min-height: 0;
       border-radius: 6px 6px 2px 2px;
       background: linear-gradient(180deg, var(--blue), var(--green));
       transition: height 180ms ease;
@@ -760,6 +760,20 @@
       font-size: 0.86rem;
       font-weight: 750;
       text-align: center;
+    }
+
+    .chart-empty {
+      grid-column: 1 / -1;
+      align-self: center;
+      justify-self: center;
+      width: 100%;
+      padding: 18px;
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+      color: var(--muted);
+      background: var(--surface-strong);
+      text-align: center;
+      font-weight: 750;
     }
 
     .topic-breakdown {
@@ -1520,6 +1534,7 @@
         state.sessions = mergeById(remoteSessions, cachedSessions)
           .filter(session => session.user_id === state.user.id)
           .sort((a, b) => new Date(b.started_at) - new Date(a.started_at));
+        await removeDuplicateStarterTopics();
 
         if (state.topics.length === 0) {
           await createStarterTopics();
@@ -1561,6 +1576,36 @@
       state.topics = data || rows;
     }
 
+    async function removeDuplicateStarterTopics() {
+      const starterNames = new Set(topicFallbacks.map(topic => normalizeTopicName(topic.name)));
+      const usedTopicIds = new Set(state.sessions.map(session => session.topic_id).filter(Boolean));
+      const groups = new Map();
+
+      state.topics.forEach(topic => {
+        const key = normalizeTopicName(topic.name);
+        if (!starterNames.has(key)) return;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(topic);
+      });
+
+      const deleteIds = [];
+      groups.forEach(group => {
+        if (group.length < 2) return;
+        group.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        const keeper = group.find(topic => usedTopicIds.has(topic.id)) || group[0];
+        group.forEach(topic => {
+          if (topic.id !== keeper.id && !usedTopicIds.has(topic.id)) {
+            deleteIds.push(topic.id);
+          }
+        });
+      });
+
+      if (!deleteIds.length) return;
+      state.topics = state.topics.filter(topic => !deleteIds.includes(topic.id));
+      const { error } = await client.from("study_topics").delete().in("id", deleteIds);
+      if (error) console.warn("Could not remove duplicate starter topics", error);
+    }
+
     function mergeById(remoteRows, cachedRows) {
       const rows = new Map();
       [...remoteRows, ...cachedRows].forEach(row => {
@@ -1577,11 +1622,19 @@
       return new Date(row.updated_at || row.created_at || 0).getTime();
     }
 
+    function normalizeTopicName(name) {
+      return String(name || "").trim().toLowerCase();
+    }
+
     async function addTopic(event) {
       event.preventDefault();
       if (!state.user) return;
       const name = els.topicName.value.trim();
       if (!name) return;
+      if (state.topics.some(topic => normalizeTopicName(topic.name) === normalizeTopicName(name))) {
+        alert("That topic already exists.");
+        return;
+      }
 
       const topic = {
         id: crypto.randomUUID(),
@@ -1894,11 +1947,19 @@
 
     function renderBarChart(container, detailElement, days, density) {
       const values = days.map(day => sumMinutes(sessionsOnDate(day)));
+      const total = sumMinutes(values);
+      if (!total) {
+        container.style.gridTemplateColumns = "1fr";
+        container.innerHTML = '<div class="chart-empty">No study time logged yet.</div>';
+        detailElement.textContent = "Start the timer or add a quick log to build this graph.";
+        return;
+      }
+
       const max = Math.max(30, ...values);
       container.style.gridTemplateColumns = `repeat(${days.length}, 1fr)`;
       container.innerHTML = days.map((day, index) => {
         const value = values[index];
-        const height = Math.max(3, Math.round((value / max) * 100));
+        const height = value ? Math.max(4, Math.round((value / max) * 100)) : 0;
         const label = density === "tiny" && index % 5 !== 0 ? "" : dayLabel(day, density);
         const detail = chartDetailText(day, value);
         return `
@@ -1915,10 +1976,7 @@
           detailElement.textContent = chartDetailText(days[index], values[index]);
         });
       });
-      const total = sumMinutes(values);
-      detailElement.textContent = total
-        ? `Tap a bar to see exact time. Total shown: ${formatMinutes(total)}.`
-        : "No study time logged for this chart yet.";
+      detailElement.textContent = `Tap a bar to see exact time. Total shown: ${formatMinutes(total)}.`;
     }
 
     function chartDetailText(day, minutes) {
