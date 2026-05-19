@@ -715,6 +715,9 @@
       align-items: end;
       gap: 10px;
       padding-top: 16px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: thin;
     }
 
     .bar-wrap {
@@ -725,6 +728,14 @@
       justify-content: flex-end;
       align-items: center;
       gap: 8px;
+    }
+
+    .bar-chart.monthly-bars .bar-wrap {
+      min-width: 64px;
+    }
+
+    .bar-wrap.active .bar {
+      box-shadow: 0 0 0 3px rgba(40, 104, 216, 0.22);
     }
 
     .bar {
@@ -751,6 +762,11 @@
       min-height: 18px;
       color: var(--ink);
       font-weight: 850;
+    }
+
+    .bar-chart.monthly-bars .bar-value,
+    .bar-chart.monthly-bars .bar-label {
+      font-size: 0.72rem;
     }
 
     .chart-detail {
@@ -1946,6 +1962,8 @@
     }
 
     function renderBarChart(container, detailElement, days, density) {
+      const isMonthly = density === "tiny";
+      container.classList.toggle("monthly-bars", isMonthly);
       const values = days.map(day => sumMinutes(sessionsOnDate(day)));
       const total = values.reduce((sum, minutes) => sum + Number(minutes || 0), 0);
       if (!total) {
@@ -1956,11 +1974,14 @@
       }
 
       const max = Math.max(30, ...values);
-      container.style.gridTemplateColumns = `repeat(${days.length}, 1fr)`;
+      const columnSize = isMonthly ? "minmax(64px, 1fr)" : "1fr";
+      container.style.gridTemplateColumns = `repeat(${days.length}, ${columnSize})`;
       container.innerHTML = days.map((day, index) => {
         const value = values[index];
         const height = value ? Math.max(4, Math.round((value / max) * 100)) : 0;
-        const label = density === "tiny" && index % 5 !== 0 ? "" : dayLabel(day, density);
+        const label = isMonthly
+          ? value ? day.toLocaleDateString(undefined, { month: "short", day: "numeric" }) : index % 5 === 0 ? dayLabel(day, density) : ""
+          : dayLabel(day, density);
         const detail = chartDetailText(day, value);
         return `
           <div class="bar-wrap" title="${escapeAttr(detail)}">
@@ -1971,12 +1992,25 @@
         `;
       }).join("");
       const bars = Array.from(container.querySelectorAll(".bar-wrap"));
+      const selectBar = index => {
+        bars.forEach(item => item.classList.remove("active"));
+        bars[index].classList.add("active");
+        bars[index].scrollIntoView({ block: "nearest", inline: "center" });
+        detailElement.textContent = `${chartDetailText(days[index], values[index])}. Total shown: ${formatMinutes(total)}.`;
+      };
       bars.forEach((bar, index) => {
         bar.addEventListener("click", () => {
-          detailElement.textContent = chartDetailText(days[index], values[index]);
+          selectBar(index);
         });
       });
-      detailElement.textContent = `Tap a bar to see exact time. Total shown: ${formatMinutes(total)}.`;
+      let defaultIndex = values.length - 1;
+      for (let index = values.length - 1; index >= 0; index -= 1) {
+        if (values[index]) {
+          defaultIndex = index;
+          break;
+        }
+      }
+      selectBar(defaultIndex);
     }
 
     function chartDetailText(day, minutes) {
