@@ -1947,7 +1947,7 @@
 
     function renderBarChart(container, detailElement, days, density) {
       const values = days.map(day => sumMinutes(sessionsOnDate(day)));
-      const total = sumMinutes(values);
+      const total = values.reduce((sum, minutes) => sum + Number(minutes || 0), 0);
       if (!total) {
         container.style.gridTemplateColumns = "1fr";
         container.innerHTML = '<div class="chart-empty">No study time logged yet.</div>';
