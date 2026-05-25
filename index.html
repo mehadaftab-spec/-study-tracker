@@ -500,6 +500,10 @@
       align-items: start;
     }
 
+    .stats-grid > .panel {
+      min-width: 0;
+    }
+
     .panel {
       padding: 18px;
     }
@@ -715,8 +719,6 @@
       align-items: end;
       gap: 10px;
       padding-top: 16px;
-      overflow-x: auto;
-      overflow-y: hidden;
       scrollbar-width: thin;
     }
 
@@ -728,10 +730,6 @@
       justify-content: flex-end;
       align-items: center;
       gap: 8px;
-    }
-
-    .bar-chart.monthly-bars .bar-wrap {
-      min-width: 64px;
     }
 
     .bar-wrap.active .bar {
@@ -762,11 +760,6 @@
       min-height: 18px;
       color: var(--ink);
       font-weight: 850;
-    }
-
-    .bar-chart.monthly-bars .bar-value,
-    .bar-chart.monthly-bars .bar-label {
-      font-size: 0.72rem;
     }
 
     .chart-detail {
@@ -1205,7 +1198,7 @@
             <div class="panel-header">
               <div>
                 <h2>Monthly Breakdown</h2>
-                <div class="panel-kicker">Last 30 days</div>
+                <div class="panel-kicker">Current month by 5-day blocks</div>
               </div>
             </div>
             <div id="monthly-chart" class="bar-chart"></div>
@@ -1958,12 +1951,11 @@
     }
 
     function renderMonthlyChart() {
-      renderBarChart(els.monthlyChart, els.monthlyChartDetail, getLastDays(30), "tiny");
+      renderRangeBarChart(els.monthlyChart, els.monthlyChartDetail, getCurrentMonthRanges());
     }
 
     function renderBarChart(container, detailElement, days, density) {
-      const isMonthly = density === "tiny";
-      container.classList.toggle("monthly-bars", isMonthly);
+      container.classList.remove("monthly-bars");
       const values = days.map(day => sumMinutes(sessionsOnDate(day)));
       const total = values.reduce((sum, minutes) => sum + Number(minutes || 0), 0);
       if (!total) {
@@ -1974,14 +1966,11 @@
       }
 
       const max = Math.max(30, ...values);
-      const columnSize = isMonthly ? "minmax(64px, 1fr)" : "1fr";
-      container.style.gridTemplateColumns = `repeat(${days.length}, ${columnSize})`;
+      container.style.gridTemplateColumns = `repeat(${days.length}, 1fr)`;
       container.innerHTML = days.map((day, index) => {
         const value = values[index];
         const height = value ? Math.max(4, Math.round((value / max) * 100)) : 0;
-        const label = isMonthly
-          ? value ? day.toLocaleDateString(undefined, { month: "short", day: "numeric" }) : index % 5 === 0 ? dayLabel(day, density) : ""
-          : dayLabel(day, density);
+        const label = dayLabel(day, density);
         const detail = chartDetailText(day, value);
         return `
           <div class="bar-wrap" title="${escapeAttr(detail)}">
@@ -2013,8 +2002,59 @@
       selectBar(defaultIndex);
     }
 
+    function renderRangeBarChart(container, detailElement, ranges) {
+      container.classList.add("monthly-bars");
+      const values = ranges.map(range => sumMinutes(sessionsInRange(range.start, range.end)));
+      const total = values.reduce((sum, minutes) => sum + Number(minutes || 0), 0);
+      if (!total) {
+        container.style.gridTemplateColumns = "1fr";
+        container.innerHTML = '<div class="chart-empty">No study time logged this month yet.</div>';
+        detailElement.textContent = "Start the timer or add a quick log to build this graph.";
+        return;
+      }
+
+      const max = Math.max(30, ...values);
+      container.style.gridTemplateColumns = `repeat(${ranges.length}, minmax(0, 1fr))`;
+      container.innerHTML = ranges.map((range, index) => {
+        const value = values[index];
+        const height = value ? Math.max(4, Math.round((value / max) * 100)) : 0;
+        const detail = rangeDetailText(range, value);
+        return `
+          <div class="bar-wrap" title="${escapeAttr(detail)}">
+            <div class="bar-value">${value ? escapeHtml(formatMinutes(value)) : ""}</div>
+            <div class="bar" style="height: ${height}%;"></div>
+            <div class="bar-label">${escapeHtml(range.label)}</div>
+          </div>
+        `;
+      }).join("");
+
+      const bars = Array.from(container.querySelectorAll(".bar-wrap"));
+      const selectBar = index => {
+        bars.forEach(item => item.classList.remove("active"));
+        bars[index].classList.add("active");
+        detailElement.textContent = `${rangeDetailText(ranges[index], values[index])}. Month total: ${formatMinutes(total)}.`;
+      };
+      bars.forEach((bar, index) => {
+        bar.addEventListener("click", () => selectBar(index));
+      });
+
+      let defaultIndex = values.length - 1;
+      for (let index = values.length - 1; index >= 0; index -= 1) {
+        if (values[index]) {
+          defaultIndex = index;
+          break;
+        }
+      }
+      selectBar(defaultIndex);
+    }
+
     function chartDetailText(day, minutes) {
       return `${day.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}: ${formatMinutes(minutes)} studied`;
+    }
+
+    function rangeDetailText(range, minutes) {
+      const month = range.start.toLocaleDateString(undefined, { month: "short" });
+      return `${month} ${range.start.getDate()}-${range.end.getDate()}: ${formatMinutes(minutes)} studied`;
     }
 
     function renderTopicBreakdown() {
@@ -2110,6 +2150,16 @@
       });
     }
 
+    function sessionsInRange(start, end) {
+      const rangeStart = startOfDay(start);
+      const rangeEnd = startOfDay(end);
+      rangeEnd.setDate(rangeEnd.getDate() + 1);
+      return state.sessions.filter(session => {
+        const started = new Date(session.started_at);
+        return started >= rangeStart && started < rangeEnd;
+      });
+    }
+
     function sumMinutes(sessions) {
       return sessions.reduce((total, session) => total + Number(session.minutes || 0), 0);
     }
@@ -2155,6 +2205,25 @@
         date.setDate(start.getDate() + index);
         return date;
       });
+    }
+
+    function getCurrentMonthRanges() {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = today.getMonth();
+      const lastDay = new Date(year, month + 1, 0).getDate();
+      const ranges = [];
+
+      for (let startDay = 1; startDay <= lastDay; startDay += 5) {
+        const endDay = Math.min(startDay + 4, lastDay);
+        ranges.push({
+          start: new Date(year, month, startDay),
+          end: new Date(year, month, endDay),
+          label: `${startDay}-${endDay}`
+        });
+      }
+
+      return ranges;
     }
 
     function getTopicById(topicId) {
